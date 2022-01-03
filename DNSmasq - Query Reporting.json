@@ -1,0 +1,418 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Simple Reporting for dnsmasq log entries in rsyslog postgres DB",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 9,
+  "iteration": 1640790331608,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": "Syslog",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisGridShow": true,
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 1,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "hidden",
+          "placement": "right",
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+         "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  devicereportedtime AS \"time\",\n  lower(split_part(message,' ', 2)) as dnsmasq_type,\n  count(1) \nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nand lower(split_part(message,' ', 5)) in ($Client)\ngroup by devicereportedtime, lower(split_part(message,' ', 2))\nORDER BY 1",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Query Type",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "127.0.0.1": {
+                  "index": 0,
+                  "text": "localhost"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "min": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 7,
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showUnfilled": true
+      },
+      "pluginVersion": "8.3.3",
+      "targets": [
+        {
+         "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  lower(split_part(message,' ', 5)) as client,\n  count(1) as counter\nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nand lower(split_part(message,' ', 5)) in ($Client)\ngroup by lower(split_part(message,' ', 5))\nORDER BY 2 desc",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Client",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "count"
+              }
+            ]
+          }
+        }
+      ],
+      "transparent": true,
+      "type": "bargauge"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "min": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 6,
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "limit": 25,
+          "values": true
+        },
+        "showUnfilled": true,
+        "text": {}
+      },
+      "pluginVersion": "8.3.3",
+      "targets": [
+        {
+         "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  lower(split_part(message,' ', 3)) as dns_query,\n  count(1) as counter\nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nand lower(split_part(message,' ', 5)) in ($Client)\ngroup by lower(split_part(message,' ', 3))\nORDER BY 2 desc",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "DNS",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "count"
+              }
+            ]
+          }
+        }
+      ],
+      "transparent": true,
+      "type": "bargauge"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 34,
+  "style": "dark",
+  "tags": [
+    "DNSmasq ",
+    "RSyslog"
+  ],
+  "templating": {
+    "list": [
+      {
+        "description": "Fill if you want to filter your local LAN request : %mylanname%",
+        "hide": 2,
+        "label": "DNS exclude pattern",
+        "name": "cDNSexclude",
+        "query": "%yourdomain%",
+        "skipUrlSync": false,
+        "type": "constant"
+      },
+      {
+        "allValue": "lower(split_part(message,' ', 5))",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "definition": "SELECT\n lower(split_part(message,' ', 5))\nFROM systemevents\nWHERE   $__timeFilter(devicereportedtime) \nand  syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '($cDNSexclude)'\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nORDER BY 1",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "Client",
+        "options": [],
+        "query": "SELECT\n lower(split_part(message,' ', 5))\nFROM systemevents\nWHERE   $__timeFilter(devicereportedtime) \nand  syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '($cDNSexclude)'\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nORDER BY 1",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": "lower(split_part(message,' ', 3))",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "definition": "SELECT\n  distinct lower(split_part(message,' ', 3))\nFROM systemevents\nWHERE    $__timeFilter(devicereportedtime) \nand syslogtag like 'dnsmasq%' \nand  message like ' query%'\nand lower(split_part(message,' ', 3)) not like '($cDNSexclude)'\nand lower(split_part(message,' ', 5)) in ($Client)\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nORDER BY 1",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "DNS",
+        "options": [],
+        "query": "SELECT\n  distinct lower(split_part(message,' ', 3))\nFROM systemevents\nWHERE    $__timeFilter(devicereportedtime) \nand syslogtag like 'dnsmasq%' \nand  message like ' query%'\nand lower(split_part(message,' ', 3)) not like '($cDNSexclude)'\nand lower(split_part(message,' ', 5)) in ($Client)\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nORDER BY 1",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "DNSmasq - Query Reporting",
+  "uid": "oHnoHZA7z",
+  "version": 8,
+  "weekStart": ""
+}
