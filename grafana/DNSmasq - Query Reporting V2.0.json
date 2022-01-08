@@ -1,0 +1,766 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_SYSLOG",
+      "label": "Syslog",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "postgres",
+      "pluginName": "PostgreSQL"
+    },
+    {
+      "name": "VAR_CDNSEXCLUDE",
+      "type": "constant",
+      "label": "DNS exclude pattern",
+      "value": "%yourdomain%",
+      "description": ""
+    }
+  ],
+  "__elements": [],
+  "__requires": [
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "Bar gauge",
+      "version": ""
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "8.3.3"
+    },
+    {
+      "type": "datasource",
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Simple Reporting for dnsmasq log entries in rsyslog postgres DB",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "iteration": 1641648418394,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisGridShow": true,
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 50,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "hidden",
+          "placement": "right",
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  DATE_TRUNC('minute', devicereportedtime) AS \"time\",\n--  lower(split_part(message,' ', 2)) as dnsmasq_type,\n  count(1) as query\nFROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand coalesce(map.hostname, split_part(message,' ', 5)) in ($Client)\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\ngroup by DATE_TRUNC('minute', devicereportedtime)\n--, lower(split_part(message,' ', 2))\nORDER BY 1",
+          "refId": "Query",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
+          "format": "time_series",
+          "group": [],
+          "hide": false,
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  DATE_TRUNC('minute', devicereportedtime) AS \"time\",\n--  lower(split_part(message,' ', 2)) as dnsmasq_type,\n  count(1) as blocked\nFROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand coalesce(map.hostname, split_part(message,' ', 5)) in ($Client)\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) in (\nSELECT distinct\n  lower(split_part(message,' ', 3)) as DNS\nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' config%'\nand lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\ngroup by DATE_TRUNC('minute', devicereportedtime)\n--, lower(split_part(message,' ', 3))\nORDER BY 1",
+          "refId": "Blocked",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Queries over Time",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 9,
+      "panels": [],
+      "title": "Processed",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "127.0.0.1": {
+                  "index": 0,
+                  "text": "localhost"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "min": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 7,
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showUnfilled": true
+      },
+      "pluginVersion": "8.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n--  DATE_TRUNC('minute', devicereportedtime) AS \"time\",\n  coalesce(map.hostname, split_part(message,' ', 5)) as client,\n  count(1) as query\nFROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nand coalesce(map.hostname, split_part(message,' ', 5)) in ($Client)\ngroup by\n-- DATE_TRUNC('minute', devicereportedtime), \ncoalesce(map.hostname, split_part(message,' ', 5))\nORDER BY count(1) desc",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Client",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "count"
+              }
+            ]
+          }
+        }
+      ],
+      "transparent": true,
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "min": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 6,
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "limit": 25,
+          "values": true
+        },
+        "showUnfilled": true,
+        "text": {}
+      },
+      "pluginVersion": "8.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  lower(split_part(message,' ', 3)) as dns_query,\n  count(1) as counter\nFROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nand coalesce(map.hostname, split_part(message,' ', 5)) in ($Client)\ngroup by lower(split_part(message,' ', 3))\nORDER BY 2 desc",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "DNS",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "count"
+              }
+            ]
+          }
+        }
+      ],
+      "transparent": true,
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 11,
+      "panels": [],
+      "title": "Blocked",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "127.0.0.1": {
+                  "index": 0,
+                  "text": "localhost"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "min": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "yellow",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 13,
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showUnfilled": true
+      },
+      "pluginVersion": "8.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  coalesce(map.hostname, split_part(message,' ', 5)) as client,\n  count(1) as query\nFROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand coalesce(map.hostname, split_part(message,' ', 5)) in ($Client)\nand lower(split_part(message,' ', 3)) in (\nSELECT distinct\n  lower(split_part(message,' ', 3)) as DNS\nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' config%'\nand lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\ngroup by coalesce(map.hostname, split_part(message,' ', 5))\nORDER BY count(1) desc",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Client ",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "count"
+              }
+            ]
+          }
+        }
+      ],
+      "transparent": true,
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "min": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "yellow",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 15,
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "limit": 25,
+          "values": true
+        },
+        "showUnfilled": true,
+        "text": {}
+      },
+      "pluginVersion": "8.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  lower(split_part(message,' ', 3)) as dns_query,\n  count(1) \nFROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand coalesce(map.hostname, split_part(message,' ', 5)) in ($Client)\nand lower(split_part(message,' ', 3)) in (\nSELECT distinct\n  lower(split_part(message,' ', 3)) as DNS\nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' config%'\nand lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\ngroup by lower(split_part(message,' ', 3))\nORDER BY 1",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "DNS",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "count"
+              }
+            ]
+          }
+        }
+      ],
+      "transparent": true,
+      "type": "bargauge"
+    }
+  ],
+  "refresh": false,
+  "schemaVersion": 34,
+  "style": "dark",
+  "tags": [
+    "RSyslog",
+    "DNSMASq "
+  ],
+  "templating": {
+    "list": [
+      {
+        "description": "Fill if you want to filter your local LAN request : %mylanname%",
+        "hide": 2,
+        "label": "DNS exclude pattern",
+        "name": "cDNSexclude",
+        "query": "${VAR_CDNSEXCLUDE}",
+        "skipUrlSync": false,
+        "type": "constant",
+        "current": {
+          "value": "${VAR_CDNSEXCLUDE}",
+          "text": "${VAR_CDNSEXCLUDE}",
+          "selected": false
+        },
+        "options": [
+          {
+            "value": "${VAR_CDNSEXCLUDE}",
+            "text": "${VAR_CDNSEXCLUDE}",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "allValue": "'.'",
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_SYSLOG}"
+        },
+        "definition": "SELECT distinct CASE WHEN split_part(message,' ', 5) = '127.0.0.1'then '127.0.0.1' ELSE split_part(split_part(message,' ', 5),'.',1)||'.'||split_part(split_part(message,' ', 5),'.',2)||'.'||split_part(split_part(message,' ', 5),'.',3) END FROM systemevents WHERE $__timeFilter(devicereportedtime) and syslogtag like 'dnsmasq%' and message like ' query%' and lower(split_part(message,' ', 3)) not like '($cDNSexclude)' ORDER BY 1",
+        "hide": 0,
+        "includeAll": true,
+        "multi": false,
+        "name": "Subnet",
+        "options": [],
+        "query": "SELECT distinct CASE WHEN split_part(message,' ', 5) = '127.0.0.1'then '127.0.0.1' ELSE split_part(split_part(message,' ', 5),'.',1)||'.'||split_part(split_part(message,' ', 5),'.',2)||'.'||split_part(split_part(message,' ', 5),'.',3) END FROM systemevents WHERE $__timeFilter(devicereportedtime) and syslogtag like 'dnsmasq%' and message like ' query%' and lower(split_part(message,' ', 3)) not like '($cDNSexclude)' ORDER BY 1",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": "coalesce(map.hostname, split_part(message,' ', 5))",
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_SYSLOG}"
+        },
+        "definition": "SELECT distinct coalesce(map.hostname, split_part(message,' ', 5)) FROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip WHERE $__timeFilter(devicereportedtime) and syslogtag like 'dnsmasq%' and message like ' query%' and lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%' and lower(split_part(message,' ', 3)) not like '($cDNSexclude)' ORDER BY 1 asc",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "Client",
+        "options": [],
+        "query": "SELECT distinct coalesce(map.hostname, split_part(message,' ', 5)) FROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip WHERE $__timeFilter(devicereportedtime) and syslogtag like 'dnsmasq%' and message like ' query%' and lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%' and lower(split_part(message,' ', 3)) not like '($cDNSexclude)' ORDER BY 1 asc",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": "lower(split_part(message,' ', 3))",
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_SYSLOG}"
+        },
+        "definition": "SELECT\n  distinct lower(split_part(message,' ', 3))\nFROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip\nWHERE    $__timeFilter(devicereportedtime) \nand syslogtag like 'dnsmasq%' \nand  message like ' query%'\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) not like '($cDNSexclude)'\nand coalesce(map.hostname, split_part(message,' ', 5)) in ($Client)\nORDER BY 1",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "DNS",
+        "options": [],
+        "query": "SELECT\n  distinct lower(split_part(message,' ', 3))\nFROM systemevents as se left outer join ip2hostname as map on split_part(se.message,' ', 5)=map.ip\nWHERE    $__timeFilter(devicereportedtime) \nand syslogtag like 'dnsmasq%' \nand  message like ' query%'\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) not like '($cDNSexclude)'\nand coalesce(map.hostname, split_part(message,' ', 5)) in ($Client)\nORDER BY 1",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "DNSmasq - Query Reporting V2.0",
+  "uid": "KoZMArRRk",
+  "version": 38,
+  "weekStart": ""
+}
