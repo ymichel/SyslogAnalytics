@@ -37,7 +37,7 @@ CREATE OR REPLACE FUNCTION new_partition_creator() RETURNS trigger AS
 		create table ip2hostname (ip varchar(15), hostname varchar(256));
 	END IF;
 	TRUNCATE TABLE ip2hostname;
-	INSERT into ip2hostname SELECT distinct  lower(split_part(message,' ', 3)) as IP, lower(split_part(message,' ', 5)) as DNS FROM systemevents where syslogtag like 'dnsmasq%' and message like ' /etc/hosts%' and devicereportedtime > now() - interval '1' day and isnumeric(left(split_part(message,' ', 3),1));
+	INSERT into ip2hostname SELECT IP, DNS FROM (SELECT IP, DNS, max(devicereportedtime) from (SELECT lower(split_part(message,' ', 3)) as IP, split_part(message,' ', 5) as DNS, devicereportedtime FROM systemevents where syslogtag like 'dnsmasq%' and message like ' /etc/hosts%' and isnumeric(left(split_part(message,' ', 3),1)) UNION SELECT lower(split_part(message,' ', 5)) as IP, split_part(message,' ', 3) as DNS, devicereportedtime FROM systemevents where syslogtag like 'dnsmasq%' and message like ' /etc/hosts%' and isnumeric(left(split_part(message,' ', 5),1))) as latest group by IP, DNS) as Uni order by 1 asc;
         IF EXISTS(SELECT relname FROM pg_class WHERE relname=retire_name) THEN
 		EXECUTE 'DROP TABLE ' || retire_name || ';';
 	END IF;
