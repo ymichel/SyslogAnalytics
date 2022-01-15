@@ -4,6 +4,7 @@ This is my System Log Analytics script set for analyzing the collected RSyslog d
 In the Folder [grafana](grafana/), there are ready to use Grafana Dashboards.
 
 Prerequisite: Existing PostgreSQL connection named "Syslog" to the RSyslog database that should be analyzed.
+I have placed the settings in [rsyslog](rsyslog/).
 
 In the folder [postgres](postgres/) I have put one setup sql file for autocreating daily partitions. 
 Since the logging can be quite extensive, I have added a function in the trigger to also drop a partition once older than 11 days, i.e., there will be only 10 days available for reporting. 
