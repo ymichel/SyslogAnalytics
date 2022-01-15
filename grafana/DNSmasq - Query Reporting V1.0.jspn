@@ -1,4 +1,48 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_SYSLOG",
+      "label": "Syslog",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "postgres",
+      "pluginName": "PostgreSQL"
+    },
+    {
+      "name": "VAR_CDNSEXCLUDE",
+      "type": "constant",
+      "label": "DNS exclude pattern",
+      "value": "%home.lan%",
+      "description": ""
+    }
+  ],
+  "__elements": [],
+  "__requires": [
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "Bar gauge",
+      "version": ""
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "8.3.3"
+    },
+    {
+      "type": "datasource",
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
   "annotations": {
     "list": [
       {
@@ -22,13 +66,16 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
-  "iteration": 1641539925048,
+  "id": null,
+  "iteration": 1642281092968,
   "links": [],
   "liveNow": false,
   "panels": [
     {
-      "datasource": "Syslog",
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -103,12 +150,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
           "format": "time_series",
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
           "rawSql": "SELECT\n  DATE_TRUNC('minute', devicereportedtime) AS \"time\",\n--  lower(split_part(message,' ', 2)) as dnsmasq_type,\n  count(1) as query\nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nand lower(split_part(message,' ', 5)) in ($Client)\ngroup by DATE_TRUNC('minute', devicereportedtime)\n--, lower(split_part(message,' ', 2))\nORDER BY 1",
-          "refId": "Query",
+          "refId": "A",
           "select": [
             [
               {
@@ -129,13 +180,17 @@
           ]
         },
         {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
           "format": "time_series",
           "group": [],
           "hide": false,
           "metricColumn": "none",
           "rawQuery": true,
           "rawSql": "SELECT\n  DATE_TRUNC('minute', devicereportedtime) AS \"time\",\n--  lower(split_part(message,' ', 2)) as dnsmasq_type,\n  count(1) as blocked\nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) in (\nSELECT distinct\n  lower(split_part(message,' ', 3)) as DNS\nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' config%'\nand lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nand lower(split_part(message,' ', 5)) in ($Client)\ngroup by DATE_TRUNC('minute', devicereportedtime)\n--, lower(split_part(message,' ', 3))\nORDER BY 1",
-          "refId": "Blocked",
+          "refId": "B",
           "select": [
             [
               {
@@ -174,6 +229,10 @@
       "type": "row"
     },
     {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -227,12 +286,16 @@
       "pluginVersion": "8.3.3",
       "targets": [
         {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
           "format": "table",
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
           "rawSql": "SELECT\n--  DATE_TRUNC('minute', devicereportedtime) AS \"time\",\n  lower(split_part(message,' ', 5)) as client,\n  count(1) as query\nFROM systemevents\nWHERE\n  $__timeFilter(devicereportedtime)\nand syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '$cDNSexclude'\nand lower(split_part(message,' ', 3)) in ($DNS)\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nand lower(split_part(message,' ', 5)) in ($Client)\ngroup by\n-- DATE_TRUNC('minute', devicereportedtime), \nlower(split_part(message,' ', 5))\norder by 2 desc\n",
-          "refId": "Query",
+          "refId": "A",
           "select": [
             [
               {
@@ -272,6 +335,10 @@
       "type": "bargauge"
     },
     {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -317,6 +384,10 @@
       "pluginVersion": "8.3.3",
       "targets": [
         {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
           "format": "table",
           "group": [],
           "metricColumn": "none",
@@ -375,6 +446,10 @@
       "type": "row"
     },
     {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -428,6 +503,10 @@
       "pluginVersion": "8.3.3",
       "targets": [
         {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
           "format": "table",
           "group": [],
           "metricColumn": "none",
@@ -473,6 +552,10 @@
       "type": "bargauge"
     },
     {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_SYSLOG}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -518,6 +601,10 @@
       "pluginVersion": "8.3.3",
       "targets": [
         {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_SYSLOG}"
+          },
           "format": "table",
           "group": [],
           "metricColumn": "none",
@@ -577,16 +664,28 @@
         "hide": 2,
         "label": "DNS exclude pattern",
         "name": "cDNSexclude",
-        "query": "%yourdomain%",
+        "query": "${VAR_CDNSEXCLUDE}",
         "skipUrlSync": false,
-        "type": "constant"
+        "type": "constant",
+        "current": {
+          "value": "${VAR_CDNSEXCLUDE}",
+          "text": "${VAR_CDNSEXCLUDE}",
+          "selected": false
+        },
+        "options": [
+          {
+            "value": "${VAR_CDNSEXCLUDE}",
+            "text": "${VAR_CDNSEXCLUDE}",
+            "selected": false
+          }
+        ]
       },
       {
         "allValue": "'.'",
-        "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_SYSLOG}"
         },
         "definition": "SELECT distinct\n CASE \n WHEN split_part(message,' ', 5) = '127.0.0.1'then '127.0.0.1'\n ELSE split_part(split_part(message,' ', 5),'.',1)||'.'||split_part(split_part(message,' ', 5),'.',2)||'.'||split_part(split_part(message,' ', 5),'.',3)\n END\nFROM systemevents\nWHERE   $__timeFilter(devicereportedtime) \nand  syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 3)) not like '($cDNSexclude)'\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nORDER BY 1",
         "hide": 0,
@@ -603,14 +702,10 @@
       },
       {
         "allValue": "lower(split_part(message,' ', 5))",
-        "current": {
-          "selected": true,
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_SYSLOG}"
         },
         "definition": "SELECT\n lower(split_part(message,' ', 5))\nFROM systemevents\nWHERE   $__timeFilter(devicereportedtime) \nand  syslogtag like 'dnsmasq%' \nand message like ' query%'\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) not like '($cDNSexclude)'\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nORDER BY 1",
         "hide": 0,
@@ -627,14 +722,10 @@
       },
       {
         "allValue": "lower(split_part(message,' ', 3))",
-        "current": {
-          "selected": true,
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_SYSLOG}"
         },
         "definition": "SELECT\n  distinct lower(split_part(message,' ', 3))\nFROM systemevents\nWHERE    $__timeFilter(devicereportedtime) \nand syslogtag like 'dnsmasq%' \nand  message like ' query%'\nand lower(split_part(message,' ', 5)) like '%'||[[Subnet]]||'%'\nand lower(split_part(message,' ', 3)) not like '($cDNSexclude)'\nand lower(split_part(message,' ', 5)) in ($Client)\nand lower(split_part(message,' ', 3)) not in (\n    SELECT distinct\n      lower(split_part(message,' ', 3)) as dns_query\n    FROM systemevents\n    WHERE\n      $__timeFilter(devicereportedtime)\n    and syslogtag like 'dnsmasq%' \n    and message like ' config%'\n    and lower(split_part(message,' ', 5)) = '0.0.0.0'\n)\nORDER BY 1",
         "hide": 0,
@@ -668,8 +759,8 @@
     ]
   },
   "timezone": "",
-  "title": "DNSmasq - Query Reporting (incl. blocked)",
+  "title": "DNSmasq - Query Reporting V1.0",
   "uid": "oHnoHZA7z",
-  "version": 39,
+  "version": 46,
   "weekStart": ""
 }
