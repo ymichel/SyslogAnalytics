@@ -4,5 +4,5 @@ For me, the following statements (as postgres) did solve the issue;
 ```
 alter database "postgres" set time zone 'Europe/Berlin'; 
 alter table systemevents alter COLUMN devicereportedtime TYPE TIMESTAMP WITH TIME ZONE USING devicereportedtime AT TIME ZONE 'UTC+1';
-runcate table systemevents;
+truncate table systemevents;
 ```
